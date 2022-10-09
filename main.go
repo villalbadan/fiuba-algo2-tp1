@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 	TDACola "tp1/cola"
 	"tp1/errores"
 	TDALista "tp1/lista"
@@ -13,6 +16,8 @@ import (
 const (
 	MIN_DNI = 1000000
 	MAX_DNI = 100000000
+	INIT_PADRON = 100
+	INIT_PARTIDOS = 10
 )
 
 //  ############### DESHACER ------------------------------------------------------------------------------------------
@@ -92,17 +97,67 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, i
 
 // ############### ----------------------------------------------------------------------------------------------------
 
+func prepararLista(lista []votos.Partido, archivoLista string) {
+	lista[0] = votos.CrearVotosEnBlanco()
 
-func prepararMesa() ([]votos.Partido, []votos.Votante) {
-	// leer archivos
-	// ordenar padron para despues hacer busqueda binaria (en el caso del padron)
-	ordenarPadron(padron)
-	// estructuras que vamos a usar, puse 10 como placeholder pero habria que ver cuantos partidos/dni
+	archivo, err := os.Open(archivoLista)
+	defer archivo.Close()
+
+	s := bufio.NewScanner(archivo)
+	for s.Scan() {
+		dividirLinea := strings.Split(s.Text(), ",")
+		partido := votos.CrearPartido(dividirLinea[0], dividirLinea[1:])
+		lista = append(lista, partido)
+	}
+
+	err = s.Err()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
+
+func leerPadron(archivoPadron string) []int {
+
+	temp := make([]int, INIT_PADRON)
+	archivo, err := os.Open(archivoPadron)
+	defer archivo.Close()
+
+	s := bufio.NewScanner(archivo)
+	for s.Scan() {
+		linea, _ := strconv.Atoi(s.Text())
+		temp = append(temp, linea)
+	}
+	err = s.Err()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return temp
+}
+
+func prepararPadron(padron []votos.Votante, archivoPadron string) {
+	// Ordenar padron en un array para despues hacer busqueda binaria (en el caso del padron)
+	// Ver si podemos no leer el padron 2 veces (una hace el array simple y la otra lo hace con el struct entero pero ya ordenado)
+	//y ordenar directamente el struct
+	// vi que hay un par de maneras con sort.Slice pero no puedo probar que simplemente funcione asi que no me meti ahi
+	temp := leerPadron(archivoPadron)
+	sort.Ints(temp)
+	for i := range temp {
+		padron = append(padron, votos.CrearVotante(temp[i]))
+	}
+}
+
+func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.Votante) {
+	// estructuras que vamos a usar, puse los valores de las const como placeholder pero habria que ver cuantos partidos/dni
 	//trae cada archivo de prueba y ahi hacer el array? porque en caso de un archivo de 300mil va a redimensionar banda
-	// no se que conviene
-	padron := make([]votos.Votante, 10)
-	partidos := make([]votos.Partido, 10)
-	return partidos, padron
+	// no se que conviene, sobretodo en el padron, la lista de partidos suele ser corta
+	padron := make([]votos.Votante, INIT_PADRON)
+	lista := make([]votos.Partido, INIT_PARTIDOS)
+	// leer archivos
+	prepararPadron(padron, fmt.Sprintf("%s.txt", archivoPadron))
+	prepararLista(lista, fmt.Sprintf("%s.csv",archivoLista))
+	return lista, padron
 }
 
 func inicializar(args []string) bool {
@@ -126,7 +181,6 @@ func main() {
 	var (
 		padron     []votos.Votante
 		partidos   []votos.Partido
-		blanco = votos.CrearVotosEnBlanco()
 		candidaturas = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.GOBERNADOR}
 		impugnados = TDALista.CrearListaEnlazada[votos.Voto]()
 		// iba a hacer un array para impugnados y dar como resultado el len del array
@@ -134,7 +188,7 @@ func main() {
 	)
 
 	if inicializar(os.Args[1:]) {
-		partidos, padron = prepararMesa()
+		partidos, padron = prepararMesa(os.Args[1], os.Args[2])
 		// cola de votantes
 		fila := TDACola.CrearColaEnlazada[votos.Votante]()
 

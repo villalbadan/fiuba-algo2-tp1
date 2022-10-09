@@ -7,14 +7,14 @@ import (
 type partidoImplementacion struct {
 	nombre     string
 	votos      [CANT_VOTACION]int
-	candidatos [CANT_VOTACION]string
+	candidatos []string
 }
 
 type partidoEnBlanco struct {
 	votos [CANT_VOTACION]int
 }
 
-func CrearPartido(nombre string, candidatos [CANT_VOTACION]string) Partido {
+func CrearPartido(nombre string, candidatos []string) Partido {
 	partido := new(partidoImplementacion)
 	partido.nombre = nombre
 	partido.candidatos = candidatos
