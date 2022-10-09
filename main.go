@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	MIN_DNI = 1000000
-	MAX_DNI = 100000000
-	INIT_PADRON = 100
+	MIN_DNI       = 1000000
+	MAX_DNI       = 100000000
+	INIT_PADRON   = 100
 	INIT_PARTIDOS = 10
 )
+
 
 //  ############### DESHACER ------------------------------------------------------------------------------------------
 func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
@@ -26,59 +27,82 @@ func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 	if errDeshacer != nil {
 		fmt.Fprintf(os.Stdout, "%s", errDeshacer)
 	} else {
-		fmt.Fprintf(os.Stdout,"OK")
+		fmt.Fprintf(os.Stdout, "OK")
 	}
 }
 
 // ############### INGRESAR DNI ---------------------------------------------------------------------------------------
 func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
-	// busqueda binaria
+	// TO-DO busqueda binaria
 	// si no esta >> return nil, errores.DNIFueraPadron{}
-	return votanteIngresado, nil
+	return votanteIngresado, nil // votanteIngresado = puntero al struct
 }
 
-func controlarDNI(padron []votos.Votante, dni int) (votos.Votante, error) {
-	// controlar si no es un numero muy pequeño asi no se busca de más
-	if dni <= MIN_DNI || dni >= MAX_DNI {
+func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
+	//se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
+	dni, err := strconv.Atoi(data[0])
+	if err != nil || dni <= MIN_DNI || dni >= MAX_DNI {
 		return nil, errores.DNIError{}
 	}
 	return buscarEnPadron(padron, dni)
 }
 
-func ingresarDNI(fila TDACola.Cola[votos.Votante], padron []votos.Votante, dni int) {
+func ingresarDNI(fila TDACola.Cola[votos.Votante], padron []votos.Votante, dni []string) {
 	votanteIngresado, errIngresando := controlarDNI(padron, dni)
 	if errIngresando == nil {
 		fila.Encolar(votanteIngresado)
-		fmt.Fprintf(os.Stdout,"OK")
+		fmt.Fprintf(os.Stdout, "OK")
 	} else {
 		fmt.Fprintf(os.Stdout, "%s", errIngresando)
 	}
 }
 
 // ############### VOTAR ----------------------------------------------------------------------------------------------
-func controlarVoto(fila TDACola.Cola[votos.Votante], datos string) struct{}, error { // no va a ser un struct creo
-	// tipo TipoVoto
-	// alternativa int
-	return {tipo: , alternativa: }, nil
+func candidaturaValida(candidaturas []votos.TipoVoto, tipo string) bool{
+	for i := range candidaturas {
+		if candidaturas[i] == tipo {
+			return true
+		}
+		return false
+	}
 }
 
-func votar(fila TDACola.Cola[votos.Votante], datos string) {
+func controlarTipo(tipo string, candidaturas []votos.TipoVoto) (votos.TipoVoto, error) {
+	data := strings.ToUpper(tipo) // VER COMO CONVERTIR A TIPOVOTO asi ya se evalua en candidaturaValida como TipoVoto??
+
+	if !candidaturaValida(candidaturas, data) {
+		fmt.Fprintf(os.Stdout, "%s", errores.ErrorTipoVoto{})
+		return data, errores.ErrorTipoVoto{}
+	}
+
+	return data, nil
+	}
+
+}
+
+func controlarAlt(alt string, partidos []votos.Partido) (int, error) {
+	alternativa, errAlt := strconv.Atoi(alt)
+	if errAlt != nil || alternativa > len(partidos) {
+		fmt.Fprintf(os.Stdout, "%s", errores.ErrorAlternativaInvalida{})
+		return -1, errAlt
+	}
+	return alternativa, errAlt
+}
+
+func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []votos.TipoVoto, partidos []votos.Partido) {
 	if fila.EstaVacia() {
 		fmt.Fprintf(os.Stdout, "%s", errores.FilaVacia{})
 	} else {
-		// ni idea todavia si lo que devuelve es un string pero vamos a asumir por ahora, puede ser un array de 2d?
-		// tambien puede ya estar separado, segun como lo implementemos al leer las lineas
-		voto, errVotar := controlarVoto(fila, datos)
-		if errVotar == nil {
-			fila.VerPrimero().Votar(voto.tipo, voto.alternativa)
-		} else {
-			fmt.Fprintf(os.Stdout, "%s", errVotar)
+		tipo, errTipo := controlarTipo(datos[0], candidaturas)
+		alt, errAlt := controlarAlt(datos[1], partidos)
+		if errAlt == nil && errTipo == nil {
+			fila.VerPrimero().Votar(tipo, alt)
 		}
 	}
 }
 
 // ############### FIN-VOTO  ------------------------------------------------------------------------------------------
-func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.TipoVoto)  {
+func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	for i, _ := range candidaturas {
 		partidos[voto.VotoPorTipo[i]].VotadoPara(candidaturas[i])
 	}
@@ -95,7 +119,7 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, i
 	fila.Desencolar()
 }
 
-// ############### ----------------------------------------------------------------------------------------------------
+// ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
 
 func prepararLista(lista []votos.Partido, archivoLista string) {
 	lista[0] = votos.CrearVotosEnBlanco()
@@ -156,11 +180,14 @@ func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.
 	lista := make([]votos.Partido, INIT_PARTIDOS)
 	// leer archivos
 	prepararPadron(padron, fmt.Sprintf("%s.txt", archivoPadron))
-	prepararLista(lista, fmt.Sprintf("%s.csv",archivoLista))
+	prepararLista(lista, fmt.Sprintf("%s.csv", archivoLista))
 	return lista, padron
 }
 
 func inicializar(args []string) bool {
+	// tecnicamente estos mismos errores se pueden manejar con el scanner pero queria que lo comprobara antes de
+	// inicializar el resto del programa
+
 	// parametros correctos
 	if len(args) < 2 {
 		fmt.Fprintf(os.Stdout, "%s", errores.ErrorParametros{})
@@ -177,12 +204,14 @@ func inicializar(args []string) bool {
 	return true
 }
 
+// ############### ---------------------------------------------------------------------------------------------------
+
 func main() {
 	var (
-		padron     []votos.Votante
-		partidos   []votos.Partido
+		padron       []votos.Votante
+		partidos     []votos.Partido
 		candidaturas = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.GOBERNADOR}
-		impugnados = TDALista.CrearListaEnlazada[votos.Voto]()
+		impugnados   = TDALista.CrearListaEnlazada[votos.Voto]()
 		// iba a hacer un array para impugnados y dar como resultado el len del array
 		// pero siento que iterar la lista al final va a ser menos costoso que redimensionar tantas veces?
 	)
@@ -195,18 +224,13 @@ func main() {
 		// lectura stdin
 		s := bufio.NewScanner(os.Stdin)
 		for s.Scan() {
-			// leer linea
-			// separar en args
-			// segun args0 definir que hacer
-			// comando = args0
-			// controlar que dato (dni o nro de lista) sea un int
-			switch comando {
-
+			args := strings.Split(s.Text(), " ")
+			switch args[0] {
 			case "ingresar":
-				ingresarDNI(fila, padron, dato)
+				ingresarDNI(fila, padron, args[1:])
 
 			case "votar":
-				votar(fila, datos)
+				votar(fila, args[1:], candidaturas, partidos)
 
 			case "deshacer":
 				deshacerVoto(fila)
