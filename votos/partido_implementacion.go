@@ -1,6 +1,8 @@
 package votos
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type partidoImplementacion struct {
 	nombre     string
