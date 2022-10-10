@@ -1,8 +1,8 @@
 package votos
 
 import (
-	"tp1/errores"
-	"tp1/lista"
+	"main/errores"
+	"main/lista"
 )
 
 type votanteImplementacion struct {
@@ -17,7 +17,7 @@ type votosIndividuales struct {
 }
 
 func CrearVotante(dni int) Votante {
-	return &votanteImplementacion{DNI: dni}
+	return &votanteImplementacion{DNI: dni, yaVoto: false, ordenDeVoto: lista.CrearListaEnlazada[votosIndividuales]()}
 }
 
 func (votante votanteImplementacion) LeerDNI() int {
@@ -28,8 +28,9 @@ func (votante *votanteImplementacion) Votar(tipo TipoVoto, alternativa int) erro
 	if votante.yaVoto {
 		return errores.ErrorVotanteFraudulento{}
 	}
-
-	votante.ordenDeVoto.InsertarPrimero(votosIndividuales{tipo, alternativa})
+	if alternativa != LISTA_IMPUGNA || votante.ordenDeVoto.Largo() > 0 {
+		votante.ordenDeVoto.InsertarPrimero(votosIndividuales{tipo, alternativa})
+	} 
 	return nil
 }
 
@@ -65,7 +66,7 @@ func (votante *votanteImplementacion) FinVoto() (Voto, error) {
 	voto := new(Voto)
 	if votante.yaVoto {
 		voto.Impugnado = true
-		return *voto, errores.ErrorVotanteFraudulento{}
+		return *voto, errores.ErrorVotanteFraudulento{Dni: votante.DNI}
 	}
 	votante.yaVoto = true
 	votoFinal(votante.ordenDeVoto, voto)
