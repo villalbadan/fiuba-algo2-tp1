@@ -30,7 +30,7 @@ func (votante *votanteImplementacion) Votar(tipo TipoVoto, alternativa int) erro
 	}
 	if alternativa != LISTA_IMPUGNA || votante.ordenDeVoto.Largo() > 0 {
 		votante.ordenDeVoto.InsertarPrimero(votosIndividuales{tipo, alternativa})
-	} 
+	}
 	return nil
 }
 
@@ -68,6 +68,7 @@ func (votante *votanteImplementacion) FinVoto() (Voto, error) {
 		voto.Impugnado = true
 		return *voto, errores.ErrorVotanteFraudulento{Dni: votante.DNI}
 	}
+
 	votante.yaVoto = true
 	votoFinal(votante.ordenDeVoto, voto)
 	return *voto, nil

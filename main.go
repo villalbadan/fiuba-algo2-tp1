@@ -267,8 +267,7 @@ func inicializar(args []string) bool {
 
 // Impresion de resultados -------------------------------------------------------------------------------------------
 
-func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto, cantImpugnados int) {
-
+func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	for i := range candidaturas {
 		fmt.Fprintf(os.Stdout, "%s: /n", candidaturas[i])
 		// se podria cambiar struct de partido en blanco a que tenga nombre Votos en Blanco?
@@ -278,12 +277,24 @@ func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, 
 		}
 		fmt.Fprintf(os.Stdout, "/n")
 	}
+}
 
+func imprimirImpugnados(cantImpugnados int) {
 	if cantImpugnados != 1 {
 		fmt.Fprintf(os.Stdout, "Votos impugnados: %s votos/n", cantImpugnados)
 	} else {
 		fmt.Fprintf(os.Stdout, "Votos impugnados: %s voto/n", cantImpugnados)
 	}
+}
+
+func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto, cantImpugnados int) {
+
+	if !fila.EstaVacia() {
+		fmt.Fprintf(os.Stdout, "%s: /n", errores.ErrorCiudadanosSinVotar)
+	}
+
+	imprimirResultados(partidos, candidaturas)
+	imprimirImpugnados(cantImpugnados)
 
 }
 
@@ -328,7 +339,7 @@ func main() {
 		}
 
 	}
-	//iterar impugnados con un contador para saber la cantidad
+
 	cierreComicios(fila, partidos, candidaturas, cantImpugnados)
 
 }
