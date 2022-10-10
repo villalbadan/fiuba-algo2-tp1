@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"tp1/votos"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 	POS_INVALIDA  = -1
 )
 
-//  ############### DESHACER ------------------------------------------------------------------------------------------
+// ############### DESHACER ------------------------------------------------------------------------------------------
 func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 	if fila.EstaVacia() {
 		fmt.Fprintf(os.Stdout, "%s \n", errores.FilaVacia{})
@@ -51,7 +52,7 @@ func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
 }
 
 func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
-	//se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
+	//Se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
 	dni, err := strconv.Atoi(data[0])
 	if err != nil || dni <= MIN_DNI || dni >= MAX_DNI {
 		return nil, errores.DNIError{}
@@ -69,7 +70,7 @@ func ingresarDNI(fila TDACola.Cola[votos.Votante], padron []votos.Votante, dni [
 	}
 }
 
-//  ############### VOTAR ----------------------------------------------------------------------------------------------
+// ############### VOTAR ----------------------------------------------------------------------------------------------
 func candidaturaValida(candidaturas []votos.TipoVoto, tipo votos.TipoVoto) bool {
 	for i := range candidaturas {
 		if candidaturas[i] == tipo {
@@ -118,6 +119,7 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 	} else if len(datos) != 2 {
 		//Creo que esta condicion no es necesaria, porque no me parecio que la pidan en ningun lado, pero la puse
 		//solamente para que no tire panic si te falto poner uno de los dos argumentos al votar
+		// >>>> Esta bien que la pongas, habria que poner la misma en ingresar dni
 		fmt.Fprintf(os.Stdout, "%s \n%s", errores.ErrorAlternativaInvalida{}, errores.ErrorTipoVoto{})
 	} else {
 		tipo, errTipo := controlarTipo(datos[0], candidaturas)
@@ -137,7 +139,9 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 	}
 }
 
-//No probe si funciona todavia
+// No probe si funciona todavia
+// >>> es necesaria una func para votos en blanco? es la posicion 0 en el array de partidos, asi que si eligieron el 0
+// se suma al array
 func VotosEnBlanco(votanteTerminado votos.Votante, partidos []votos.Partido, voto *votos.Voto) {
 	if !voto.Impugnado {
 		for i := votos.PRESIDENTE; i < votos.CANT_VOTACION; i++ {
@@ -148,8 +152,8 @@ func VotosEnBlanco(votanteTerminado votos.Votante, partidos []votos.Partido, vot
 	}
 }
 
-//Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
-//si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
+// Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
+// si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
 func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, cantImpugnados *int, candidaturas []votos.TipoVoto) {
 	voto, errFinalizar := fila.VerPrimero().FinVoto()
 	if errFinalizar != nil {
@@ -261,9 +265,31 @@ func inicializar(args []string) bool {
 	return true
 }
 
+// Impresion de resultados -------------------------------------------------------------------------------------------
+
+func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto, cantImpugnados int) {
+
+	for i := range candidaturas {
+		fmt.Fprintf(os.Stdout, "%s: /n", candidaturas[i])
+		// se podria cambiar struct de partido en blanco a que tenga nombre Votos en Blanco?
+		partidos[0].ObtenerResultado()
+		for j := range partidos {
+			partidos[j].ObtenerResultado()
+		}
+		fmt.Fprintf(os.Stdout, "/n")
+	}
+
+	if cantImpugnados != 1 {
+		fmt.Fprintf(os.Stdout, "Votos impugnados: %s votos/n", cantImpugnados)
+	} else {
+		fmt.Fprintf(os.Stdout, "Votos impugnados: %s voto/n", cantImpugnados)
+	}
+
+}
+
 // ############### ---------------------------------------------------------------------------------------------------
 
-//Estoy casi seguro que los comando de ingresar, votar y deshacer funcionan bien, faltaria terminar el de fin-voto
+// Estoy casi seguro que los comando de ingresar, votar y deshacer funcionan bien, faltaria terminar el de fin-voto
 // e imprimir todos los votos en la salida.
 func main() {
 	var (
@@ -271,12 +297,7 @@ func main() {
 		partidos       []votos.Partido
 		candidaturas   = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.INTENDENTE}
 		cantImpugnados int
-		//Por lo que entendi yo, lo unico para que necesitamos los impugnados es para hacer el conteo
-		//al final donde se imprime todo, si los necesitamos para algo mas lo volvemos a dejar como estaba
-
-		//impugnados   = TDALista.CrearListaEnlazada[votos.Voto]()
-	// iba a hacer un array para impugnados y dar como resultado el len del array
-	// pero siento que iterar la lista al final va a ser menos costoso que redimensionar tantas veces?
+		fila           = TDACola.CrearColaEnlazada[votos.Votante]()
 	)
 
 	argumentos := os.Args
@@ -284,7 +305,7 @@ func main() {
 	if inicializar(argumentos[1:]) {
 		partidos, padron = prepararMesa(argumentos[1], argumentos[2])
 		// cola de votantes
-		fila := TDACola.CrearColaEnlazada[votos.Votante]()
+
 		partidos[0].ObtenerResultado(1)
 		// // lectura stdin
 		s := bufio.NewScanner(os.Stdin)
@@ -308,6 +329,6 @@ func main() {
 
 	}
 	//iterar impugnados con un contador para saber la cantidad
-	//imprimirResultados()
+	cierreComicios(fila, partidos, candidaturas, cantImpugnados)
 
 }

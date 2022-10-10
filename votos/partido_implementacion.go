@@ -30,7 +30,11 @@ func (partido *partidoImplementacion) VotadoPara(tipo TipoVoto) {
 }
 
 func (partido partidoImplementacion) ObtenerResultado(tipo TipoVoto) string {
-	return fmt.Sprintf("%s - %s: %d votos\n", partido.nombre, partido.candidatos[tipo], partido.votos[tipo])
+	var plural string
+	if partido.votos[tipo] > 1 {
+		plural = "s"
+	}
+	return fmt.Sprintf("%s - %s: %d voto%s\n", partido.nombre, partido.candidatos[tipo], partido.votos[tipo], plural)
 }
 
 func (blanco *partidoEnBlanco) VotadoPara(tipo TipoVoto) {
@@ -38,5 +42,9 @@ func (blanco *partidoEnBlanco) VotadoPara(tipo TipoVoto) {
 }
 
 func (blanco partidoEnBlanco) ObtenerResultado(tipo TipoVoto) string {
-	return fmt.Sprintf("Votos en blanco: %d votos\n", blanco.votos[tipo])
+	var plural string
+	if blanco.votos[tipo] > 1 {
+		plural = "s"
+	}
+	return fmt.Sprintf("Votos en Blanco: %d voto%s\n", blanco.votos[tipo], plural)
 }
