@@ -1,16 +1,16 @@
-package tp1
+package main
 
 import (
 	"bufio"
 	"fmt"
+	TDACola "main/cola"
+	errores "main/errores"
+	TDALista "main/lista"
+	"main/votos"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
-	TDACola "tp1/cola"
-	"tp1/errores"
-	TDALista "tp1/lista"
-	"tp1/votos"
 )
 
 const (
@@ -18,24 +18,42 @@ const (
 	MAX_DNI       = 100000000
 	INIT_PADRON   = 100
 	INIT_PARTIDOS = 10
+	POS_INVALIDA  = -1
 )
 
-
 //  ############### DESHACER ------------------------------------------------------------------------------------------
-func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
-	errDeshacer := fila.VerPrimero().Deshacer()
-	if errDeshacer != nil {
-		fmt.Fprintf(os.Stdout, "%s", errDeshacer)
+// func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
+// 	errDeshacer := fila.VerPrimero().Deshacer()
+// 	if errDeshacer != nil {
+// 		fmt.Fprintf(os.Stdout, "%s", errDeshacer)
+// 	} else {
+// 		fmt.Fprintf(os.Stdout, "OK")
+// 	}
+// }
+
+// ############### INGRESAR DNI ---------------------------------------------------------------------------------------
+func posicionPadron(padron []votos.Votante, dni int, inicio int, fin int) int {
+	medio := (inicio + fin) / 2
+	if inicio >= fin {
+		return POS_INVALIDA
+	}
+	if padron[medio].LeerDNI() == dni {
+		return medio
+	}
+	if padron[medio].LeerDNI() > dni {
+		return posicionPadron(padron, dni, 0, medio)
 	} else {
-		fmt.Fprintf(os.Stdout, "OK")
+		return posicionPadron(padron, dni, medio, len(padron))
 	}
 }
 
-// ############### INGRESAR DNI ---------------------------------------------------------------------------------------
 func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
-	// TO-DO busqueda binaria
-	// si no esta >> return nil, errores.DNIFueraPadron{}
-	return votanteIngresado, nil // votanteIngresado = puntero al struct
+
+	if posicionPadron(padron, dni, 0, len(padron)) == POS_INVALIDA {
+		return nil, errores.DNIFueraPadron{}
+	}
+	return padron[posicionPadron(padron, dni, 0, len(padron))], nil
+
 }
 
 func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
@@ -57,49 +75,48 @@ func ingresarDNI(fila TDACola.Cola[votos.Votante], padron []votos.Votante, dni [
 	}
 }
 
-// ############### VOTAR ----------------------------------------------------------------------------------------------
-func candidaturaValida(candidaturas []votos.TipoVoto, tipo string) bool{
-	for i := range candidaturas {
-		if candidaturas[i] == tipo {
-			return true
-		}
-		return false
-	}
-}
+//  ############### VOTAR ----------------------------------------------------------------------------------------------
+// func candidaturaValida(candidaturas []votos.TipoVoto, tipo string) bool {
+// 	for i := range candidaturas {
+// 		if candidaturas[i] == tipo {
+// 			return true
+// 		}
+// 		return false
+// 	}
+// }
 
-func controlarTipo(tipo string, candidaturas []votos.TipoVoto) (votos.TipoVoto, error) {
-	data := strings.ToUpper(tipo) // VER COMO CONVERTIR A TIPOVOTO asi ya se evalua en candidaturaValida como TipoVoto??
+// func controlarTipo(tipo string, candidaturas []votos.TipoVoto) (votos.TipoVoto, error) {
+// 	data := strings.ToUpper(tipo) // VER COMO CONVERTIR A TIPOVOTO asi ya se evalua en candidaturaValida como TipoVoto??
 
-	if !candidaturaValida(candidaturas, data) {
-		fmt.Fprintf(os.Stdout, "%s", errores.ErrorTipoVoto{})
-		return data, errores.ErrorTipoVoto{}
-	}
+// 	if !candidaturaValida(candidaturas, data) {
+// 		fmt.Fprintf(os.Stdout, "%s", errores.ErrorTipoVoto{})
+// 		return data, errores.ErrorTipoVoto{}
+// 	}
 
-	return data, nil
-	}
+// 	return data, nil
 
-}
+// }
 
-func controlarAlt(alt string, partidos []votos.Partido) (int, error) {
-	alternativa, errAlt := strconv.Atoi(alt)
-	if errAlt != nil || alternativa > len(partidos) {
-		fmt.Fprintf(os.Stdout, "%s", errores.ErrorAlternativaInvalida{})
-		return -1, errAlt
-	}
-	return alternativa, errAlt
-}
+// func controlarAlt(alt string, partidos []votos.Partido) (int, error) {
+// 	alternativa, errAlt := strconv.Atoi(alt)
+// 	if errAlt != nil || alternativa > len(partidos) {
+// 		fmt.Fprintf(os.Stdout, "%s", errores.ErrorAlternativaInvalida{})
+// 		return -1, errAlt
+// 	}
+// 	return alternativa, errAlt
+// }
 
-func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []votos.TipoVoto, partidos []votos.Partido) {
-	if fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s", errores.FilaVacia{})
-	} else {
-		tipo, errTipo := controlarTipo(datos[0], candidaturas)
-		alt, errAlt := controlarAlt(datos[1], partidos)
-		if errAlt == nil && errTipo == nil {
-			fila.VerPrimero().Votar(tipo, alt)
-		}
-	}
-}
+// func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []votos.TipoVoto, partidos []votos.Partido) {
+// 	if fila.EstaVacia() {
+// 		fmt.Fprintf(os.Stdout, "%s", errores.FilaVacia{})
+// 	} else {
+// 		tipo, errTipo := controlarTipo(datos[0], candidaturas)
+// 		alt, errAlt := controlarAlt(datos[1], partidos)
+// 		if errAlt == nil && errTipo == nil {
+// 			fila.VerPrimero().Votar(tipo, alt)
+// 		}
+// 	}
+// }
 
 // ############### FIN-VOTO  ------------------------------------------------------------------------------------------
 func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.TipoVoto) {
@@ -121,17 +138,20 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, i
 
 // ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
 
-func prepararLista(lista []votos.Partido, archivoLista string) {
-	lista[0] = votos.CrearVotosEnBlanco()
+func prepararLista(lista *[]votos.Partido, archivoLista string) {
 
+	(*lista)[0] = votos.CrearVotosEnBlanco()
 	archivo, err := os.Open(archivoLista)
+	if err != nil {
+		fmt.Println(errores.ErrorLeerArchivo.Error)
+	}
 	defer archivo.Close()
 
 	s := bufio.NewScanner(archivo)
 	for s.Scan() {
 		dividirLinea := strings.Split(s.Text(), ",")
 		partido := votos.CrearPartido(dividirLinea[0], dividirLinea[1:])
-		lista = append(lista, partido)
+		*lista = append(*lista, partido)
 	}
 
 	err = s.Err()
@@ -143,8 +163,11 @@ func prepararLista(lista []votos.Partido, archivoLista string) {
 
 func leerPadron(archivoPadron string) []int {
 
-	temp := make([]int, INIT_PADRON)
+	var temp []int
 	archivo, err := os.Open(archivoPadron)
+	if err != nil {
+		fmt.Println(errores.ErrorLeerArchivo.Error)
+	}
 	defer archivo.Close()
 
 	s := bufio.NewScanner(archivo)
@@ -160,7 +183,7 @@ func leerPadron(archivoPadron string) []int {
 	return temp
 }
 
-func prepararPadron(padron []votos.Votante, archivoPadron string) {
+func prepararPadron(padron *[]votos.Votante, archivoPadron string) {
 	// Ordenar padron en un array para despues hacer busqueda binaria (en el caso del padron)
 	// Ver si podemos no leer el padron 2 veces (una hace el array simple y la otra lo hace con el struct entero pero ya ordenado)
 	//y ordenar directamente el struct
@@ -168,7 +191,7 @@ func prepararPadron(padron []votos.Votante, archivoPadron string) {
 	temp := leerPadron(archivoPadron)
 	sort.Ints(temp)
 	for i := range temp {
-		padron = append(padron, votos.CrearVotante(temp[i]))
+		*padron = append(*padron, votos.CrearVotante(temp[i]))
 	}
 }
 
@@ -179,8 +202,10 @@ func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.
 	padron := make([]votos.Votante, INIT_PADRON)
 	lista := make([]votos.Partido, INIT_PARTIDOS)
 	// leer archivos
-	prepararPadron(padron, fmt.Sprintf("%s.txt", archivoPadron))
-	prepararLista(lista, fmt.Sprintf("%s.csv", archivoLista))
+	prepararPadron(&padron, archivoPadron)
+	prepararLista(&lista, archivoLista)
+	//fmt.Println(padron)
+	//fmt.Println(lista)
 	return lista, padron
 }
 
@@ -198,7 +223,7 @@ func inicializar(args []string) bool {
 	_, err1 := os.Stat(args[0])
 	_, err2 := os.Stat(args[1])
 	if err2 != nil || err1 != nil {
-		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s /n", errores.ErrorLeerArchivo{})
 		return false
 	}
 	return true
@@ -208,40 +233,43 @@ func inicializar(args []string) bool {
 
 func main() {
 	var (
-		padron       []votos.Votante
-		partidos     []votos.Partido
-		candidaturas = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.GOBERNADOR}
-		impugnados   = TDALista.CrearListaEnlazada[votos.Voto]()
-		// iba a hacer un array para impugnados y dar como resultado el len del array
-		// pero siento que iterar la lista al final va a ser menos costoso que redimensionar tantas veces?
+		padron   []votos.Votante
+		partidos []votos.Partido
+		//candidaturas = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.GOBERNADOR}
+	//impugnados   = TDALista.CrearListaEnlazada[votos.Voto]()
+	// iba a hacer un array para impugnados y dar como resultado el len del array
+	// pero siento que iterar la lista al final va a ser menos costoso que redimensionar tantas veces?
 	)
 
-	if inicializar(os.Args[1:]) {
-		partidos, padron = prepararMesa(os.Args[1], os.Args[2])
+	argumentos := os.Args
+
+	if inicializar(argumentos[1:]) {
+		partidos, padron = prepararMesa(argumentos[1], argumentos[2])
 		// cola de votantes
 		fila := TDACola.CrearColaEnlazada[votos.Votante]()
-
-		// lectura stdin
+		partidos[0].ObtenerResultado(1)
+		// // lectura stdin
 		s := bufio.NewScanner(os.Stdin)
 		for s.Scan() {
 			args := strings.Split(s.Text(), " ")
 			switch args[0] {
 			case "ingresar":
-				ingresarDNI(fila, padron, args[1:])
+				ingresarDNI(&fila, padron, args[1:])
 
 			case "votar":
-				votar(fila, args[1:], candidaturas, partidos)
+				//votar(fila, args[1:], candidaturas, partidos)
 
-			case "deshacer":
-				deshacerVoto(fila)
+				// 		// case "deshacer":
+				// 		// 	deshacerVoto(fila)
 
-			case "fin-voto":
-				finalizarVoto(fila, partidos, impugnados, candidaturas)
+				// 		// case "fin-voto":
+				// 		// 	finalizarVoto(fila, partidos, impugnados, candidaturas)
 
 			}
 		}
 
-		// iterar impugnados con un contador para saber la cantidad
-		// imprimirResultados()
 	}
+	//iterar impugnados con un contador para saber la cantidad
+	//imprimirResultados()
+
 }
