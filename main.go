@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	TDACola "rerepolez/cola"
@@ -29,6 +30,9 @@ func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 	errDeshacer := fila.VerPrimero().Deshacer()
 
 	if errDeshacer != nil {
+		if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
+			fila.Desencolar()
+		}
 		fmt.Fprintf(os.Stdout, "%s \n", errDeshacer)
 	} else {
 		fmt.Fprintf(os.Stdout, "OK \n")
@@ -148,16 +152,6 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 		}
 	}
 }
-
-//func VotosEnBlanco(votanteTerminado votos.Votante, partidos []votos.Partido, voto *votos.Voto) {
-//	if !voto.Impugnado {
-//		for i := votos.PRESIDENTE; i < votos.CANT_VOTACION; i++ {
-//			if voto.VotoPorTipo[i] == 0 {
-//				partidos[0].VotadoPara(i)
-//			}
-//		}
-//	}
-//}
 
 // Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
 // si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
