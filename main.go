@@ -3,13 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
-	TDACola "main/cola"
-	errores "main/errores"
-	"main/votos"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+	TDACola "tp1/cola"
+	"tp1/errores"
 	"tp1/votos"
 )
 
@@ -106,7 +105,7 @@ func controlarTipo(tipo string, candidaturas []votos.TipoVoto) (votos.TipoVoto, 
 
 func controlarAlt(alt string, partidos []votos.Partido) (int, error) {
 	alternativa, errAlt := strconv.Atoi(alt)
-	if errAlt != nil || alternativa > len(partidos) || alternativa < 0 {
+	if errAlt != nil || alternativa >= len(partidos) || alternativa < 0 {
 		fmt.Fprintf(os.Stdout, "%s \n", errores.ErrorAlternativaInvalida{})
 		return -1, errores.ErrorAlternativaInvalida{}
 	}
@@ -158,7 +157,8 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 	voto, errFinalizar := fila.VerPrimero().FinVoto()
 	if errFinalizar != nil {
 		fmt.Fprintf(os.Stdout, "%s", errFinalizar)
-		*cantImpugnados++
+	} else if voto.Impugnado {
+		partidos[0].VotadoPara(votos.PRESIDENTE)
 	} else {
 		sumarVoto(voto, partidos, candidaturas)
 		fmt.Fprintf(os.Stdout, "OK \n")
@@ -168,11 +168,11 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 
 // ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
 
-func prepararLista(lista *[]votos.Partido, archivoLista string) {
-
+func prepararLista(archivoLista string) []votos.Partido {
+	lista := make([]votos.Partido, 0, INIT_PARTIDOS)
 	archivo, err := os.Open(archivoLista)
 	if err != nil {
-		fmt.Println(errores.ErrorLeerArchivo.Error)
+		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
@@ -180,23 +180,24 @@ func prepararLista(lista *[]votos.Partido, archivoLista string) {
 	for s.Scan() {
 		dividirLinea := strings.Split(s.Text(), ",")
 		partido := votos.CrearPartido(dividirLinea[0], dividirLinea[1:])
-		*lista = append(*lista, partido)
+		lista = append(lista, partido)
 	}
-	(*lista)[0] = votos.CrearVotosEnBlanco()
+	lista[0] = votos.CrearVotosEnBlanco("Votos impugnados")
+	lista = append(lista, votos.CrearVotosEnBlanco("Votos en Blanco"))
 
 	err = s.Err()
 	if err != nil {
 		fmt.Println(err)
 	}
-
+	return lista
 }
 
 func leerPadron(archivoPadron string) []int {
 
-	var temp []int
+	temp := make([]int, 0, INIT_PADRON)
 	archivo, err := os.Open(archivoPadron)
 	if err != nil {
-		fmt.Println(errores.ErrorLeerArchivo.Error)
+		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
@@ -213,7 +214,7 @@ func leerPadron(archivoPadron string) []int {
 	return temp
 }
 
-func prepararPadron(padron *[]votos.Votante, archivoPadron string) {
+func prepararPadron(archivoPadron string) []votos.Votante {
 	// Ordenar padron en un array para despues hacer busqueda binaria (en el caso del padron)
 	// Ver si podemos no leer el padron 2 veces (una hace el array simple y la otra lo hace con el struct entero pero ya ordenado)
 	//y ordenar directamente el struct
@@ -222,31 +223,34 @@ func prepararPadron(padron *[]votos.Votante, archivoPadron string) {
 	sort.Ints(temp)
 	//sort.Slice(*padron, func(i, j int) bool { return (*padron)[i].LeerDNI() < (*padron)[j].LeerDNI() })
 	//intente hacer el sort con el slice pero cuando ejecute el programa me tiro panic asi que lo deje como estaba
+	padron := make([]votos.Votante, 0, len(temp))
 	for i := range temp {
-		*padron = append(*padron, votos.CrearVotante(temp[i]))
+		padron = append(padron, votos.CrearVotante(temp[i]))
 	}
+
+	return padron
 }
 
 func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.Votante) {
+
 	// estructuras que vamos a usar, puse los valores de las const como placeholder pero habria que ver cuantos partidos/dni
 	//trae cada archivo de prueba y ahi hacer el array? porque en caso de un archivo de 300mil va a redimensionar banda
 	// no se que conviene, sobretodo en el padron, la lista de partidos suele ser corta
 
 	//las deje por defecto porque sino me tiraba un error, aparte como hacemos append, queda el arreglo
 	//con muchos nil adelante y a lo ultimo los partidos y dnis, con lo cual si quisieras buscar en la lista seria
-	//un problema porque la posicion 1 no tendria nada, creo..
-	var padron []votos.Votante
-	var lista []votos.Partido
+	//un problema porque la posicion 1 no tendria nada, creo.
+
 	// leer archivos
-	prepararPadron(&padron, archivoPadron)
-	prepararLista(&lista, archivoLista)
+	padron := prepararPadron(archivoPadron)
+	lista := prepararLista(archivoLista)
 	//fmt.Println(padron)
 	//fmt.Println(lista)
 	return lista, padron
 }
 
 func inicializar(args []string) bool {
-	// tecnicamente estos mismos errores se pueden manejar con el scanner pero queria que lo comprobara antes de
+	// Tecnicamente estos mismos errores se pueden manejar con el scanner pero queriamos que lo comprobara antes de
 	// inicializar el resto del programa
 
 	// parametros correctos
@@ -270,13 +274,14 @@ func inicializar(args []string) bool {
 func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	for i := range candidaturas {
 		fmt.Fprintf(os.Stdout, "%s: /n", candidaturas[i])
+		partidos[len(partidos)].ObtenerResultado(candidaturas[i])
 		// se podria cambiar struct de partido en blanco a que tenga nombre Votos en Blanco?
-		partidos[0].ObtenerResultado()
-		for j := range partidos {
-			partidos[j].ObtenerResultado()
+		for j := 1; j < (len(partidos) - 1); j++ {
+			partidos[j].ObtenerResultado(candidaturas[i])
 		}
 		fmt.Fprintf(os.Stdout, "/n")
 	}
+	partidos[0].ObtenerResultado(candidaturas[0])
 }
 
 func imprimirImpugnados(cantImpugnados int) {
@@ -290,7 +295,7 @@ func imprimirImpugnados(cantImpugnados int) {
 func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto, cantImpugnados int) {
 
 	if !fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s: /n", errores.ErrorCiudadanosSinVotar)
+		fmt.Fprintf(os.Stdout, "%s: /n", errores.ErrorCiudadanosSinVotar{})
 	}
 
 	imprimirResultados(partidos, candidaturas)

@@ -1,8 +1,9 @@
 package votos
 
 import (
-	"main/errores"
-	"main/lista"
+	"errors"
+	"tp1/errores"
+	"tp1/lista"
 )
 
 type votanteImplementacion struct {
@@ -45,14 +46,19 @@ func (votante *votanteImplementacion) Deshacer() error {
 	return nil
 }
 
-func votoFinal(lista lista.Lista[votosIndividuales], votoFinal *Voto) *Voto {
+func votoFinal(listaVotos lista.Lista[votosIndividuales], votoFinal *Voto) *Voto {
 	var contador TipoVoto
-	for iter := lista.Iterador(); iter.HaySiguiente(); {
+	for iter := listaVotos.Iterador(); iter.HaySiguiente(); {
 		if contador == CANT_VOTACION {
 			return votoFinal
 		}
 
 		if votoFinal.VotoPorTipo[iter.VerActual().tipo] == 0 {
+			if iter.VerActual().lista == LISTA_IMPUGNA {
+				votoFinal.Impugnado = true
+				return votoFinal
+			}
+
 			votoFinal.VotoPorTipo[iter.VerActual().tipo] = iter.VerActual().lista
 			contador++
 		}
@@ -65,8 +71,11 @@ func votoFinal(lista lista.Lista[votosIndividuales], votoFinal *Voto) *Voto {
 func (votante *votanteImplementacion) FinVoto() (Voto, error) {
 	voto := new(Voto)
 	if votante.yaVoto {
-		voto.Impugnado = true
 		return *voto, errores.ErrorVotanteFraudulento{Dni: votante.DNI}
+	}
+
+	if votante.ordenDeVoto.EstaVacia() {
+		return *voto, errors.New("No existe voto en curso")
 	}
 
 	votante.yaVoto = true
