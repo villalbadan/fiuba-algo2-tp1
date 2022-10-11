@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	TDACola "rerepolez/cola"
+	"rerepolez/errores"
+	"rerepolez/votos"
 	"sort"
 	"strconv"
 	"strings"
-	TDACola "tp1/cola"
-	"tp1/errores"
-	"tp1/votos"
 )
 
 const (
@@ -254,15 +254,16 @@ func inicializar(args []string) bool {
 	if len(args) < 2 {
 		fmt.Fprintf(os.Stdout, "%s \n", errores.ErrorParametros{})
 		return false
+	} else {
+		// archivos existen
+		_, err1 := os.Stat(args[0])
+		_, err2 := os.Stat(args[1])
+		if err2 != nil || err1 != nil {
+			fmt.Fprintf(os.Stdout, "%s /n", errores.ErrorLeerArchivo{})
+			return false
+		}
 	}
 
-	// archivos existen
-	_, err1 := os.Stat(args[0])
-	_, err2 := os.Stat(args[1])
-	if err2 != nil || err1 != nil {
-		fmt.Fprintf(os.Stdout, "%s /n", errores.ErrorLeerArchivo{})
-		return false
-	}
 	return true
 }
 

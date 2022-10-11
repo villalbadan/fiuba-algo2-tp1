@@ -2,8 +2,8 @@ package votos
 
 import (
 	"errors"
-	"tp1/errores"
-	"tp1/lista"
+	"rerepolez/errores"
+	"rerepolez/lista"
 )
 
 type votanteImplementacion struct {

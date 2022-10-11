@@ -1,3 +1,3 @@
-module tp1
+module rerepolez
 
 go 1.18
