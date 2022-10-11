@@ -25,7 +25,9 @@ func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 	if fila.EstaVacia() {
 		fmt.Fprintf(os.Stdout, "%s \n", errores.FilaVacia{})
 	}
+
 	errDeshacer := fila.VerPrimero().Deshacer()
+
 	if errDeshacer != nil {
 		fmt.Fprintf(os.Stdout, "%s \n", errDeshacer)
 	} else {
@@ -51,9 +53,9 @@ func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
 }
 
 func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
-	//Se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
+
 	dni, err := strconv.Atoi(data[0])
-	if err != nil || dni <= MIN_DNI || dni >= MAX_DNI {
+	if err != nil || len(data) != 1 || dni <= MIN_DNI || dni >= MAX_DNI {
 		return nil, errores.DNIError{}
 	}
 	return buscarEnPadron(padron, dni)
@@ -116,9 +118,8 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 	if fila.EstaVacia() {
 		fmt.Fprintf(os.Stdout, "%s \n", errores.FilaVacia{})
 	} else if len(datos) != 2 {
-		//Creo que esta condicion no es necesaria, porque no me parecio que la pidan en ningun lado, pero la puse
-		//solamente para que no tire panic si te falto poner uno de los dos argumentos al votar
-		// >>>> Esta bien que la pongas, habria que poner la misma en ingresar dni
+		//No es una condición contemplado en consigna, pero es necesaria para el buen funcionamiento
+		//De la misma manera, si los datos no son 2, no hay forma de que el voto sea válido
 		fmt.Fprintf(os.Stdout, "%s \n%s", errores.ErrorAlternativaInvalida{}, errores.ErrorTipoVoto{})
 	} else {
 		tipo, errTipo := controlarTipo(datos[0], candidaturas)
@@ -142,9 +143,6 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 	}
 }
 
-// No probe si funciona todavia
-// >>> es necesaria una func para votos en blanco? es la posicion 0 en el array de partidos, asi que si eligieron el 0
-// se suma al array
 //func VotosEnBlanco(votanteTerminado votos.Votante, partidos []votos.Partido, voto *votos.Voto) {
 //	if !voto.Impugnado {
 //		for i := votos.PRESIDENTE; i < votos.CANT_VOTACION; i++ {
@@ -221,43 +219,37 @@ func leerPadron(archivoPadron string) []int {
 }
 
 func prepararPadron(archivoPadron string) []votos.Votante {
-	// Ordenar padron en un array para despues hacer busqueda binaria (en el caso del padron)
-	// Ver si podemos no leer el padron 2 veces (una hace el array simple y la otra lo hace con el struct entero pero ya ordenado)
-	//y ordenar directamente el struct
-	// vi que hay un par de maneras con sort.Slice pero no puedo probar que simplemente funcione asi que no me meti ahi
+
 	temp := leerPadron(archivoPadron)
+	//Ordenamos el padron para poder usar búsqueda binaria
 	sort.Ints(temp)
-	//sort.Slice(*padron, func(i, j int) bool { return (*padron)[i].LeerDNI() < (*padron)[j].LeerDNI() })
-	//intente hacer el sort con el slice pero cuando ejecute el programa me tiro panic asi que lo deje como estaba
 	padron := make([]votos.Votante, 0, len(temp))
 	for i := range temp {
 		padron = append(padron, votos.CrearVotante(temp[i]))
 	}
-
 	return padron
+
+	//Elegimos un array en vez de lista enlazada para poder realizar la busqueda de los dni con busqueda binaria.
+	//La clara desventaja es la redimension que tenga que hacer en caso de padrones muy grandes.
+	//Idealmente, sabriamos la cantidad de lineas para asi poder crear el array tan grande como sea necesario.
+	//PREGUNTA: ¿Podriamos para esto hacer algo de las siguientes opciones?
+	//1) Leer una vez el archivo para contar las lineas antes de volver a leerlo para extraer los datos? (Habian dicho
+	//que no era recomendable leerlo más de una vez)
+	//2) Estimar el número de lineas usando la información provista por os.Stat() (file size) y que vamos a manejarnos
+	//con datos de DNI, o sea, integers en un rango especifico?
 }
 
 func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.Votante) {
 
-	// estructuras que vamos a usar, puse los valores de las const como placeholder pero habria que ver cuantos partidos/dni
-	//trae cada archivo de prueba y ahi hacer el array? porque en caso de un archivo de 300mil va a redimensionar banda
-	// no se que conviene, sobretodo en el padron, la lista de partidos suele ser corta
-
-	//las deje por defecto porque sino me tiraba un error, aparte como hacemos append, queda el arreglo
-	//con muchos nil adelante y a lo ultimo los partidos y dnis, con lo cual si quisieras buscar en la lista seria
-	//un problema porque la posicion 1 no tendria nada, creo.
-
 	// leer archivos
 	padron := prepararPadron(archivoPadron)
 	lista := prepararLista(archivoLista)
-	//fmt.Println(padron)
-	//fmt.Println(lista)
 	return lista, padron
 }
 
 func inicializar(args []string) bool {
-	// Tecnicamente estos mismos errores se pueden manejar con el scanner pero queriamos que lo comprobara antes de
-	// inicializar el resto del programa
+	// Nota: Tecnicamente estos mismos errores se pueden manejar con el scanner pero queriamos que lo comprobara
+	// antes de inicializar el resto del programa
 
 	// parametros correctos
 	if len(args) < 2 {
@@ -311,8 +303,6 @@ func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, 
 
 // ############### ---------------------------------------------------------------------------------------------------
 
-// Estoy casi seguro que los comando de ingresar, votar y deshacer funcionan bien, faltaria terminar el de fin-voto
-// e imprimir todos los votos en la salida.
 func main() {
 	var (
 		padron         []votos.Votante
@@ -326,10 +316,8 @@ func main() {
 
 	if inicializar(argumentos[1:]) {
 		partidos, padron = prepararMesa(argumentos[1], argumentos[2])
-		// cola de votantes
 
-		partidos[0].ObtenerResultado(1)
-		// // lectura stdin
+		// lectura stdin
 		s := bufio.NewScanner(os.Stdin)
 		for s.Scan() {
 			args := strings.Split(s.Text(), " ")
