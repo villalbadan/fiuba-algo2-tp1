@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	MIN_DNI       = 1000000
+	MIN_DNI       = 0
 	MAX_DNI       = 100000000
 	INIT_PADRON   = 100
 	INIT_PARTIDOS = 10
@@ -252,14 +252,14 @@ func inicializar(args []string) bool {
 
 	// parametros correctos
 	if len(args) < 2 {
-		fmt.Fprintf(os.Stdout, "%s \n", errores.ErrorParametros{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorParametros{})
 		return false
 	} else {
 		// archivos existen
 		_, err1 := os.Stat(args[0])
 		_, err2 := os.Stat(args[1])
 		if err2 != nil || err1 != nil {
-			fmt.Fprintf(os.Stdout, "%s /n", errores.ErrorLeerArchivo{})
+			fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
 			return false
 		}
 	}
@@ -270,10 +270,11 @@ func inicializar(args []string) bool {
 // Impresion de resultados -------------------------------------------------------------------------------------------
 
 func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto) {
+
 	for i := range candidaturas {
-		fmt.Fprintf(os.Stdout, "%s: /n", candidaturas[i])
+		fmt.Fprintf(os.Stdout, "%s: \n", candidaturas[i])
 		// imprime votos en blanco
-		partidos[len(partidos)].ObtenerResultado(candidaturas[i])
+		partidos[len(partidos)-1].ObtenerResultado(candidaturas[i])
 		// imprime votos de los partidos
 		for j := 1; j < (len(partidos) - 1); j++ {
 			partidos[j].ObtenerResultado(candidaturas[i])
@@ -328,9 +329,8 @@ func main() {
 
 			}
 		}
+		cierreComicios(fila, partidos, candidaturas)
 
 	}
-
-	cierreComicios(fila, partidos, candidaturas)
 
 }
