@@ -4,17 +4,17 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	TDACola "main/cola"
-	errores "main/errores"
-	votos "main/votos"
 	"os"
+	TDACola "rerepolez/cola"
+	errores "rerepolez/errores"
+	votos "rerepolez/votos"
 	"sort"
 	"strconv"
 	"strings"
 )
 
 const (
-	MIN_DNI       = 1000000
+	MIN_DNI       = 0
 	MAX_DNI       = 100000000
 	INIT_PADRON   = 100
 	INIT_PARTIDOS = 10
@@ -25,16 +25,17 @@ const (
 func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 	if fila.EstaVacia() {
 		fmt.Fprintf(os.Stdout, "%s \n", errores.FilaVacia{})
-	} else {
-		errDeshacer := fila.VerPrimero().Deshacer()
-		if errDeshacer != nil {
-			if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
-				fila.Desencolar()
-			}
-			fmt.Fprintf(os.Stdout, "%s \n", errDeshacer)
-		} else {
-			fmt.Fprintf(os.Stdout, "OK \n")
+	}
+
+	errDeshacer := fila.VerPrimero().Deshacer()
+
+	if errDeshacer != nil {
+		if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
+			fila.Desencolar()
 		}
+		fmt.Fprintf(os.Stdout, "%s \n", errDeshacer)
+	} else {
+		fmt.Fprintf(os.Stdout, "OK \n")
 	}
 }
 
@@ -58,7 +59,7 @@ func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
 func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
 	//se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
 	dni, err := strconv.Atoi(data[0])
-	if err != nil || dni <= MIN_DNI || dni >= MAX_DNI {
+	if err != nil || len(data) != 1 || dni <= MIN_DNI || dni >= MAX_DNI {
 		return nil, errores.DNIError{}
 	}
 
@@ -154,7 +155,7 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 
 //Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
 //si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
-func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, cantImpugnados *int, candidaturas []votos.TipoVoto) {
+func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	voto, errFinalizar := fila.VerPrimero().FinVoto()
 	if errFinalizar != nil {
 		fmt.Fprintf(os.Stdout, "%s", errFinalizar)
@@ -179,14 +180,14 @@ func prepararLista(archivoLista string) []votos.Partido {
 	}
 	defer archivo.Close()
 
-	lista[0] = votos.CrearVotosEnBlanco( /*"Votos impugnados"*/ )
+	lista[0] = votos.CrearVotosEnBlanco("Votos Impugnados")
 	s := bufio.NewScanner(archivo)
 	for s.Scan() {
 		dividirLinea := strings.Split(s.Text(), ",")
 		partido := votos.CrearPartido(dividirLinea[0], dividirLinea[1:])
 		lista = append(lista, partido)
 	}
-	lista = append(lista, votos.CrearVotosEnBlanco( /*"Votos en Blanco"*/ ))
+	lista = append(lista, votos.CrearVotosEnBlanco("Votos en Blanco"))
 
 	err = s.Err()
 	if err != nil {
@@ -247,12 +248,12 @@ func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.
 }
 
 func inicializar(args []string) bool {
-	// tecnicamente estos mismos errores se pueden manejar con el scanner pero queria que lo comprobara antes de
-	// inicializar el resto del programa
+	// Nota: Tecnicamente estos mismos errores se pueden manejar con el scanner pero queriamos que lo comprobara
+	// antes de inicializar el resto del programa
 
 	// parametros correctos
 	if len(args) < 2 {
-		fmt.Fprintf(os.Stdout, "%s \n", errores.ErrorParametros{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorParametros{})
 		return false
 	}
 
@@ -260,7 +261,7 @@ func inicializar(args []string) bool {
 	_, err1 := os.Stat(args[0])
 	_, err2 := os.Stat(args[1])
 	if err2 != nil || err1 != nil {
-		fmt.Fprintf(os.Stdout, "%s \n", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
 		return false
 	}
 	return true
@@ -291,6 +292,7 @@ func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto)
 		// imprime votos de los partidos
 		for j := 1; j < (len(partidos) - 1); j++ {
 			fmt.Fprintln(os.Stdout, partidos[j].ObtenerResultado(candidaturas[i]))
+
 		}
 		fmt.Fprintf(os.Stdout, "\n")
 	}
@@ -310,46 +312,34 @@ func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, 
 
 // ############### ---------------------------------------------------------------------------------------------------
 
-//Estoy casi seguro que los comando de ingresar, votar y deshacer funcionan bien, faltaria terminar el de fin-voto
-// e imprimir todos los votos en la salida.
 func main() {
 	var (
-		padron         []votos.Votante
-		partidos       []votos.Partido
-		candidaturas   = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.INTENDENTE}
-		cantImpugnados int
+		padron       []votos.Votante
+		partidos     []votos.Partido
+		candidaturas = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.INTENDENTE}
+		fila         = TDACola.CrearColaEnlazada[votos.Votante]()
 	)
 
 	argumentos := os.Args
 
 	if inicializar(argumentos[1:]) {
 		partidos, padron = prepararMesa(argumentos[1], argumentos[2])
-		// cola de votantes
-		fila := TDACola.CrearColaEnlazada[votos.Votante]()
-		partidos[0].ObtenerResultado(1)
-		// // lectura stdin
+
+		// lectura stdin
 		s := bufio.NewScanner(os.Stdin)
-		termino := false
-		for s.Scan() && !termino {
+		for s.Scan() {
 			args := strings.Split(s.Text(), " ")
 			switch args[0] {
 			case "ingresar":
 				ingresarDNI(fila, padron, args[1:])
-
 			case "votar":
 				votar(fila, args[1:], candidaturas, partidos)
-
 			case "deshacer":
 				deshacerVoto(fila)
-
 			case "fin-voto":
-				finalizarVoto(fila, partidos, &cantImpugnados, candidaturas)
-
-			case "terminar":
-				termino = true
+				finalizarVoto(fila, partidos, candidaturas)
 			}
 		}
 		cierreComicios(fila, partidos, candidaturas)
 	}
-
 }
