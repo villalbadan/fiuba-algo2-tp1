@@ -129,6 +129,7 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 			err := fila.VerPrimero().Votar(tipo, alt)
 			if err != nil {
 				fmt.Fprintf(os.Stdout, "%s \n", err)
+				fila.Desencolar()
 			} else {
 				fmt.Fprintf(os.Stdout, "OK \n")
 			}
