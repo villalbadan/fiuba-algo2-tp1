@@ -155,7 +155,7 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 
 // Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
 // si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
-func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, cantImpugnados *int, candidaturas []votos.TipoVoto) {
+func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	voto, errFinalizar := fila.VerPrimero().FinVoto()
 	if errFinalizar != nil {
 		fmt.Fprintf(os.Stdout, "%s", errFinalizar)
@@ -272,32 +272,25 @@ func inicializar(args []string) bool {
 func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	for i := range candidaturas {
 		fmt.Fprintf(os.Stdout, "%s: /n", candidaturas[i])
+		// imprime votos en blanco
 		partidos[len(partidos)].ObtenerResultado(candidaturas[i])
-		// se podria cambiar struct de partido en blanco a que tenga nombre Votos en Blanco?
+		// imprime votos de los partidos
 		for j := 1; j < (len(partidos) - 1); j++ {
 			partidos[j].ObtenerResultado(candidaturas[i])
 		}
 		fmt.Fprintf(os.Stdout, "/n")
 	}
+	//imprime impugnados
 	partidos[0].ObtenerResultado(candidaturas[0])
 }
 
-func imprimirImpugnados(cantImpugnados int) {
-	if cantImpugnados != 1 {
-		fmt.Fprintf(os.Stdout, "Votos impugnados: %s votos/n", cantImpugnados)
-	} else {
-		fmt.Fprintf(os.Stdout, "Votos impugnados: %s voto/n", cantImpugnados)
-	}
-}
-
-func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto, cantImpugnados int) {
+func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 
 	if !fila.EstaVacia() {
 		fmt.Fprintf(os.Stdout, "%s: /n", errores.ErrorCiudadanosSinVotar{})
 	}
 
 	imprimirResultados(partidos, candidaturas)
-	imprimirImpugnados(cantImpugnados)
 
 }
 
@@ -305,11 +298,10 @@ func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, 
 
 func main() {
 	var (
-		padron         []votos.Votante
-		partidos       []votos.Partido
-		candidaturas   = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.INTENDENTE}
-		cantImpugnados int
-		fila           = TDACola.CrearColaEnlazada[votos.Votante]()
+		padron       []votos.Votante
+		partidos     []votos.Partido
+		candidaturas = []votos.TipoVoto{votos.PRESIDENTE, votos.GOBERNADOR, votos.INTENDENTE}
+		fila         = TDACola.CrearColaEnlazada[votos.Votante]()
 	)
 
 	argumentos := os.Args
@@ -332,13 +324,13 @@ func main() {
 				deshacerVoto(fila)
 
 			case "fin-voto":
-				finalizarVoto(fila, partidos, &cantImpugnados, candidaturas)
+				finalizarVoto(fila, partidos, candidaturas)
 
 			}
 		}
 
 	}
 
-	cierreComicios(fila, partidos, candidaturas, cantImpugnados)
+	cierreComicios(fila, partidos, candidaturas)
 
 }
