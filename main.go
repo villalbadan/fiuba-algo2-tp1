@@ -134,22 +134,26 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 // ############### FIN-VOTO  ------------------------------------------------------------------------------------------
 func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	for i := range candidaturas {
-		partidos[voto.VotoPorTipo[i]].VotadoPara(candidaturas[i])
+		if voto.VotoPorTipo[i] == 0 {
+			partidos[len(partidos)-1].VotadoPara(candidaturas[i])
+		} else {
+			partidos[voto.VotoPorTipo[i]].VotadoPara(candidaturas[i])
+		}
 	}
 }
 
 // No probe si funciona todavia
 // >>> es necesaria una func para votos en blanco? es la posicion 0 en el array de partidos, asi que si eligieron el 0
 // se suma al array
-func VotosEnBlanco(votanteTerminado votos.Votante, partidos []votos.Partido, voto *votos.Voto) {
-	if !voto.Impugnado {
-		for i := votos.PRESIDENTE; i < votos.CANT_VOTACION; i++ {
-			if voto.VotoPorTipo[i] == 0 {
-				partidos[0].VotadoPara(i)
-			}
-		}
-	}
-}
+//func VotosEnBlanco(votanteTerminado votos.Votante, partidos []votos.Partido, voto *votos.Voto) {
+//	if !voto.Impugnado {
+//		for i := votos.PRESIDENTE; i < votos.CANT_VOTACION; i++ {
+//			if voto.VotoPorTipo[i] == 0 {
+//				partidos[0].VotadoPara(i)
+//			}
+//		}
+//	}
+//}
 
 // Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
 // si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
@@ -157,10 +161,12 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 	voto, errFinalizar := fila.VerPrimero().FinVoto()
 	if errFinalizar != nil {
 		fmt.Fprintf(os.Stdout, "%s", errFinalizar)
-	} else if voto.Impugnado {
-		partidos[0].VotadoPara(votos.PRESIDENTE)
 	} else {
-		sumarVoto(voto, partidos, candidaturas)
+		if voto.Impugnado {
+			partidos[0].VotadoPara(votos.PRESIDENTE) // elegi presidente arbitrariamente para guardar los impugnados
+		} else {
+			sumarVoto(voto, partidos, candidaturas)
+		}
 		fmt.Fprintf(os.Stdout, "OK \n")
 	}
 	fila.Desencolar()
