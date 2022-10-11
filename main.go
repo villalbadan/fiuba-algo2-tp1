@@ -126,8 +126,13 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 		alt, errAlt := controlarAlt(datos[1], partidos)
 
 		if errAlt == nil && errTipo == nil {
-			fila.VerPrimero().Votar(tipo, alt)
-			fmt.Fprintf(os.Stdout, "OK \n")
+			err := fila.VerPrimero().Votar(tipo, alt)
+			if err != nil {
+				fmt.Fprintf(os.Stdout, "%s \n", err)
+			} else {
+				fmt.Fprintf(os.Stdout, "OK \n")
+			}
+
 		}
 	}
 }
@@ -173,7 +178,7 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 // ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
 
 func prepararLista(archivoLista string) []votos.Partido {
-	lista := make([]votos.Partido, 0, INIT_PARTIDOS)
+	lista := make([]votos.Partido, 1, INIT_PARTIDOS)
 	lista[0] = votos.CrearVotosEnBlanco("Votos impugnados")
 	archivo, err := os.Open(archivoLista)
 	if err != nil {
