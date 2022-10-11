@@ -24,7 +24,7 @@ const (
 //  ############### DESHACER ------------------------------------------------------------------------------------------
 func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 	if fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s \n", errores.FilaVacia{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
 	}
 
 	errDeshacer := fila.VerPrimero().Deshacer()
@@ -33,9 +33,9 @@ func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 		if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
 			fila.Desencolar()
 		}
-		fmt.Fprintf(os.Stdout, "%s \n", errDeshacer)
+		fmt.Fprintf(os.Stdout, "%s\n", errDeshacer)
 	} else {
-		fmt.Fprintf(os.Stdout, "OK \n")
+		fmt.Fprintf(os.Stdout, "OK\n")
 	}
 }
 
@@ -70,9 +70,9 @@ func ingresarDNI(fila TDACola.Cola[votos.Votante], padron []votos.Votante, dni [
 	votanteIngresado, errIngresando := controlarDNI(padron, dni)
 	if errIngresando == nil {
 		fila.Encolar(votanteIngresado)
-		fmt.Fprintf(os.Stdout, "OK \n")
+		fmt.Fprintf(os.Stdout, "OK\n")
 	} else {
-		fmt.Fprintf(os.Stdout, "%s \n", errIngresando)
+		fmt.Fprintf(os.Stdout, "%s\n", errIngresando)
 	}
 }
 
@@ -103,7 +103,7 @@ func controlarTipo(tipo string, candidaturas []votos.TipoVoto) (votos.TipoVoto, 
 
 	data := pasarStringATipoVoto(tipo)
 	if !candidaturaValida(candidaturas, data) {
-		fmt.Fprintf(os.Stdout, "%s \n", errores.ErrorTipoVoto{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorTipoVoto{})
 		return data, errores.ErrorTipoVoto{}
 	}
 	return data, nil
@@ -113,7 +113,7 @@ func controlarTipo(tipo string, candidaturas []votos.TipoVoto) (votos.TipoVoto, 
 func controlarAlt(alt string, partidos []votos.Partido) (int, error) {
 	alternativa, errAlt := strconv.Atoi(alt)
 	if errAlt != nil || alternativa >= len(partidos)-1 || alternativa < 0 {
-		fmt.Fprintf(os.Stdout, "%s \n", errores.ErrorAlternativaInvalida{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorAlternativaInvalida{})
 		return -1, errores.ErrorAlternativaInvalida{}
 	}
 	return alternativa, errAlt
@@ -121,11 +121,11 @@ func controlarAlt(alt string, partidos []votos.Partido) (int, error) {
 
 func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []votos.TipoVoto, partidos []votos.Partido) {
 	if fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s \n", errores.FilaVacia{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
 	} else if len(datos) != 2 {
 		//No es una condición contemplada en la consigna, pero es necesaria para el buen funcionamiento
 		//De la misma manera, si los datos no son 2, no hay forma de que el voto sea válido
-		fmt.Fprintf(os.Stdout, "%s \n%s", errores.ErrorAlternativaInvalida{}, errores.ErrorTipoVoto{})
+		fmt.Fprintf(os.Stdout, "%s\n%s", errores.ErrorAlternativaInvalida{}, errores.ErrorTipoVoto{})
 	} else {
 		tipo, errTipo := controlarTipo(datos[0], candidaturas)
 		alt, errAlt := controlarAlt(datos[1], partidos)
@@ -133,10 +133,10 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 		if errAlt == nil && errTipo == nil {
 			err := fila.VerPrimero().Votar(tipo, alt)
 			if err != nil {
-				fmt.Fprintf(os.Stdout, "%s \n", err)
+				fmt.Fprintf(os.Stdout, "%s\n", err)
 				fila.Desencolar()
 			} else {
-				fmt.Fprintf(os.Stdout, "OK \n")
+				fmt.Fprintf(os.Stdout, "OK\n")
 			}
 		}
 	}
@@ -286,7 +286,7 @@ func pasarTipoVotoAString(candidatura votos.TipoVoto) string {
 
 func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	for i := range candidaturas {
-		fmt.Fprintf(os.Stdout, "%s: \n", pasarTipoVotoAString(candidaturas[i]))
+		fmt.Fprintf(os.Stdout, "%s:\n", pasarTipoVotoAString(candidaturas[i]))
 		// imprime votos en blanco
 		fmt.Fprintln(os.Stdout, partidos[len(partidos)-1].ObtenerResultado(candidaturas[i]))
 		// imprime votos de los partidos
@@ -303,7 +303,7 @@ func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto)
 func cierreComicios(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 
 	if !fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s: \n", errores.ErrorCiudadanosSinVotar{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorCiudadanosSinVotar{})
 	}
 
 	imprimirResultados(partidos, candidaturas)
