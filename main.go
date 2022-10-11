@@ -174,6 +174,7 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 
 func prepararLista(archivoLista string) []votos.Partido {
 	lista := make([]votos.Partido, 0, INIT_PARTIDOS)
+	lista[0] = votos.CrearVotosEnBlanco("Votos impugnados")
 	archivo, err := os.Open(archivoLista)
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
@@ -186,7 +187,6 @@ func prepararLista(archivoLista string) []votos.Partido {
 		partido := votos.CrearPartido(dividirLinea[0], dividirLinea[1:])
 		lista = append(lista, partido)
 	}
-	lista[0] = votos.CrearVotosEnBlanco("Votos impugnados")
 	lista = append(lista, votos.CrearVotosEnBlanco("Votos en Blanco"))
 
 	err = s.Err()
@@ -197,7 +197,6 @@ func prepararLista(archivoLista string) []votos.Partido {
 }
 
 func leerPadron(archivoPadron string) []int {
-
 	temp := make([]int, 0, INIT_PADRON)
 	archivo, err := os.Open(archivoPadron)
 	if err != nil {
