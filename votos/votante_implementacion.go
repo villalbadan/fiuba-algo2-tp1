@@ -1,7 +1,6 @@
 package votos
 
 import (
-	"errors"
 	"rerepolez/errores"
 	"rerepolez/lista"
 )
@@ -29,9 +28,9 @@ func (votante *votanteImplementacion) Votar(tipo TipoVoto, alternativa int) erro
 	if votante.yaVoto {
 		return errores.ErrorVotanteFraudulento{}
 	}
-	if alternativa != LISTA_IMPUGNA || votante.ordenDeVoto.Largo() > 0 {
-		votante.ordenDeVoto.InsertarPrimero(votosIndividuales{tipo, alternativa})
-	}
+	//if alternativa != LISTA_IMPUGNA || votante.ordenDeVoto.Largo() > 0 {
+	votante.ordenDeVoto.InsertarPrimero(votosIndividuales{tipo, alternativa})
+	//}
 	return nil
 }
 
@@ -52,13 +51,11 @@ func votoFinal(listaVotos lista.Lista[votosIndividuales], votoFinal *Voto) *Voto
 		if contador == CANT_VOTACION {
 			return votoFinal
 		}
-
-		if votoFinal.VotoPorTipo[iter.VerActual().tipo] == 0 {
-			if iter.VerActual().lista == LISTA_IMPUGNA {
-				votoFinal.Impugnado = true
-				return votoFinal
-			}
-
+		if iter.VerActual().lista == LISTA_IMPUGNA {
+			votoFinal.Impugnado = true
+			return votoFinal
+		}
+		if votoFinal.VotoPorTipo[iter.VerActual().tipo] == 0 { //voto vacio
 			votoFinal.VotoPorTipo[iter.VerActual().tipo] = iter.VerActual().lista
 			contador++
 		}
@@ -74,9 +71,9 @@ func (votante *votanteImplementacion) FinVoto() (Voto, error) {
 		return *voto, errores.ErrorVotanteFraudulento{Dni: votante.DNI}
 	}
 
-	if votante.ordenDeVoto.EstaVacia() {
-		return *voto, errors.New("No existe voto en curso")
-	}
+	//if votante.ordenDeVoto.EstaVacia() {
+	//	return *voto, errors.New("No existe voto en curso")
+	//}
 
 	votante.yaVoto = true
 	votoFinal(votante.ordenDeVoto, voto)

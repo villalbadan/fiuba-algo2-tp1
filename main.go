@@ -25,17 +25,17 @@ const (
 func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
 	if fila.EstaVacia() {
 		fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
-	}
-
-	errDeshacer := fila.VerPrimero().Deshacer()
-
-	if errDeshacer != nil {
-		if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
-			fila.Desencolar()
-		}
-		fmt.Fprintf(os.Stdout, "%s\n", errDeshacer)
 	} else {
-		fmt.Fprintf(os.Stdout, "OK\n")
+		errDeshacer := fila.VerPrimero().Deshacer()
+
+		if errDeshacer != nil {
+			if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
+				fila.Desencolar()
+			}
+			fmt.Fprintf(os.Stdout, "%s\n", errDeshacer)
+		} else {
+			fmt.Fprintf(os.Stdout, "OK\n")
+		}
 	}
 }
 
@@ -132,7 +132,7 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 
 		if errAlt == nil && errTipo == nil {
 			err := fila.VerPrimero().Votar(tipo, alt)
-			if err != nil {
+			if errors.Is(err, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
 				fmt.Fprintf(os.Stdout, "%s\n", err)
 				fila.Desencolar()
 			} else {
@@ -156,18 +156,23 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 //Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
 //si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
 func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) {
-	voto, errFinalizar := fila.VerPrimero().FinVoto()
-	if errFinalizar != nil {
-		fmt.Fprintf(os.Stdout, "%s", errFinalizar)
+	if fila.EstaVacia() {
+		fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
 	} else {
-		if voto.Impugnado {
-			partidos[0].VotadoPara(votos.PRESIDENTE) // elegi presidente arbitrariamente para guardar los impugnados
+		voto, errFinalizar := fila.VerPrimero().FinVoto()
+		if errFinalizar != nil {
+			fmt.Fprintf(os.Stdout, "%s\n", errFinalizar)
 		} else {
-			sumarVoto(voto, partidos, candidaturas)
+			if voto.Impugnado {
+				partidos[0].VotadoPara(votos.PRESIDENTE) // elegi presidente arbitrariamente para guardar los impugnados
+			} else {
+				sumarVoto(voto, partidos, candidaturas)
+			}
+			fmt.Fprintf(os.Stdout, "OK\n")
 		}
-		fmt.Fprintf(os.Stdout, "OK \n")
+		fila.Desencolar()
 	}
-	fila.Desencolar()
+
 }
 
 // ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
@@ -336,7 +341,7 @@ func main() {
 				votar(fila, args[1:], candidaturas, partidos)
 			case "deshacer":
 				deshacerVoto(fila)
-			case "fin-voto":
+			case "fin-votar":
 				finalizarVoto(fila, partidos, candidaturas)
 			}
 		}
