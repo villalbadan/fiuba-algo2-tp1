@@ -26,17 +26,16 @@ func (votante votanteImplementacion) LeerDNI() int {
 
 func (votante *votanteImplementacion) Votar(tipo TipoVoto, alternativa int) error {
 	if votante.yaVoto {
-		return errores.ErrorVotanteFraudulento{}
+		return errores.ErrorVotanteFraudulento{Dni: votante.DNI}
 	}
-	//if alternativa != LISTA_IMPUGNA || votante.ordenDeVoto.Largo() > 0 {
+
 	votante.ordenDeVoto.InsertarPrimero(votosIndividuales{tipo, alternativa})
-	//}
 	return nil
 }
 
 func (votante *votanteImplementacion) Deshacer() error {
 	if votante.yaVoto {
-		return errores.ErrorVotanteFraudulento{}
+		return errores.ErrorVotanteFraudulento{Dni: votante.DNI}
 	}
 	if votante.ordenDeVoto.EstaVacia() {
 		return errores.ErrorNoHayVotosAnteriores{}
@@ -46,18 +45,14 @@ func (votante *votanteImplementacion) Deshacer() error {
 }
 
 func votoFinal(listaVotos lista.Lista[votosIndividuales], votoFinal *Voto) *Voto {
-	var contador TipoVoto
 	for iter := listaVotos.Iterador(); iter.HaySiguiente(); {
-		if contador == CANT_VOTACION {
-			return votoFinal
-		}
 		if iter.VerActual().lista == LISTA_IMPUGNA {
 			votoFinal.Impugnado = true
 			return votoFinal
 		}
+
 		if votoFinal.VotoPorTipo[iter.VerActual().tipo] == 0 { //voto vacio
 			votoFinal.VotoPorTipo[iter.VerActual().tipo] = iter.VerActual().lista
-			contador++
 		}
 
 		iter.Siguiente()
@@ -70,10 +65,6 @@ func (votante *votanteImplementacion) FinVoto() (Voto, error) {
 	if votante.yaVoto {
 		return *voto, errores.ErrorVotanteFraudulento{Dni: votante.DNI}
 	}
-
-	//if votante.ordenDeVoto.EstaVacia() {
-	//	return *voto, errors.New("No existe voto en curso")
-	//}
 
 	votante.yaVoto = true
 	votoFinal(votante.ordenDeVoto, voto)

@@ -132,7 +132,7 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 
 		if errAlt == nil && errTipo == nil {
 			err := fila.VerPrimero().Votar(tipo, alt)
-			if errors.Is(err, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
+			if err != nil {
 				fmt.Fprintf(os.Stdout, "%s\n", err)
 				fila.Desencolar()
 			} else {
@@ -164,7 +164,7 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 			fmt.Fprintf(os.Stdout, "%s\n", errFinalizar)
 		} else {
 			if voto.Impugnado {
-				partidos[0].VotadoPara(votos.PRESIDENTE) // elegi presidente arbitrariamente para guardar los impugnados
+				partidos[votos.PRESIDENTE].VotadoPara(votos.PRESIDENTE) // elegi presidente arbitrariamente para guardar los impugnados
 			} else {
 				sumarVoto(voto, partidos, candidaturas)
 			}
@@ -181,7 +181,7 @@ func prepararLista(archivoLista string) []votos.Partido {
 	lista := make([]votos.Partido, 1, INIT_PARTIDOS)
 	archivo, err := os.Open(archivoLista)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
@@ -206,7 +206,7 @@ func leerPadron(archivoPadron string) []int {
 	temp := make([]int, 0, INIT_PADRON)
 	archivo, err := os.Open(archivoPadron)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
