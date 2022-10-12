@@ -56,8 +56,7 @@ func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
 	}
 }
 
-func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
-	//se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
+func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {s
 	dni, err := strconv.Atoi(data[0])
 	if err != nil || len(data) != 1 || dni <= MIN_DNI || dni >= MAX_DNI {
 		return nil, errores.DNIError{}
@@ -164,7 +163,8 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 			fmt.Fprintf(os.Stdout, "%s\n", errFinalizar)
 		} else {
 			if voto.Impugnado {
-				partidos[votos.PRESIDENTE].VotadoPara(votos.PRESIDENTE) // elegi presidente arbitrariamente para guardar los impugnados
+				// elegimos presidente arbitrariamente para guardar los impugnados
+				partidos[votos.PRESIDENTE].VotadoPara(votos.PRESIDENTE)
 			} else {
 				sumarVoto(voto, partidos, candidaturas)
 			}
@@ -242,6 +242,7 @@ func prepararPadron(archivoPadron string) []votos.Votante {
 	//que no era recomendable leerlo más de una vez)
 	//2) Estimar el número de lineas usando la información provista por os.Stat() (file size) y que vamos a manejarnos
 	//con datos de DNI, o sea, integers en un rango especifico?
+	//Igualmente en base a los resultados del test, pareceria funcionar bien con estos volumenes de datos
 }
 
 func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.Votante) {
@@ -274,6 +275,7 @@ func inicializar(args []string) bool {
 
 // Impresion de resultados -------------------------------------------------------------------------------------------
 func pasarTipoVotoAString(candidatura votos.TipoVoto) string {
+
 	switch candidatura {
 
 	case votos.PRESIDENTE:
