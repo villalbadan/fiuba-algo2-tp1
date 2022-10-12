@@ -172,7 +172,6 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 		}
 		fila.Desencolar()
 	}
-
 }
 
 // ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
@@ -331,8 +330,9 @@ func main() {
 		partidos, padron = prepararMesa(argumentos[1], argumentos[2])
 
 		// lectura stdin
+		termino := false
 		s := bufio.NewScanner(os.Stdin)
-		for s.Scan() {
+		for s.Scan() && !termino {
 			args := strings.Split(s.Text(), " ")
 			switch args[0] {
 			case "ingresar":
@@ -343,6 +343,8 @@ func main() {
 				deshacerVoto(fila)
 			case "fin-votar":
 				finalizarVoto(fila, partidos, candidaturas)
+			case "terminar":
+				termino = true
 			}
 		}
 		cierreComicios(fila, partidos, candidaturas)
