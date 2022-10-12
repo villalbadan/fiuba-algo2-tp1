@@ -132,7 +132,7 @@ func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []voto
 
 		if errAlt == nil && errTipo == nil {
 			err := fila.VerPrimero().Votar(tipo, alt)
-			if err != nil {
+			if errors.Is(err, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
 				fmt.Fprintf(os.Stdout, "%s\n", err)
 				fila.Desencolar()
 			} else {
@@ -172,6 +172,7 @@ func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, c
 		}
 		fila.Desencolar()
 	}
+
 }
 
 // ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
@@ -180,7 +181,7 @@ func prepararLista(archivoLista string) []votos.Partido {
 	lista := make([]votos.Partido, 1, INIT_PARTIDOS)
 	archivo, err := os.Open(archivoLista)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
@@ -205,7 +206,7 @@ func leerPadron(archivoPadron string) []int {
 	temp := make([]int, 0, INIT_PADRON)
 	archivo, err := os.Open(archivoPadron)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
@@ -330,9 +331,8 @@ func main() {
 		partidos, padron = prepararMesa(argumentos[1], argumentos[2])
 
 		// lectura stdin
-		termino := false
 		s := bufio.NewScanner(os.Stdin)
-		for s.Scan() && !termino {
+		for s.Scan() {
 			args := strings.Split(s.Text(), " ")
 			switch args[0] {
 			case "ingresar":
@@ -343,8 +343,6 @@ func main() {
 				deshacerVoto(fila)
 			case "fin-votar":
 				finalizarVoto(fila, partidos, candidaturas)
-			case "terminar":
-				termino = true
 			}
 		}
 		cierreComicios(fila, partidos, candidaturas)
