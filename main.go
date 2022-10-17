@@ -14,29 +14,40 @@ import (
 )
 
 const (
-	MIN_DNI       = 0
-	MAX_DNI       = 100000000
-	INIT_PADRON   = 100
-	INIT_PARTIDOS = 10
-	POS_INVALIDA  = -1
+	MIN_DNI             = 0
+	MAX_DNI             = 100000000
+	INIT_PADRON         = 100
+	INIT_PARTIDOS       = 10
+	POS_INVALIDA        = -1
+	ARCHIVOS_INICIO     = 2
+	COMANDO             = 0 // posicion del comando a realizar segun la estructura de input: COMANDO datosDeLaAccion
+	CANT_DATOS_INGRESAR = 1 // cant de datos requeridas para el comando INGRESAR DNI
+	CANT_DATOS_VOTAR    = 2 // cant de datos requeridos para operacion votar
+	VOTO_EN_BLANCO      = 0
+	LISTA_IMPUGNADOS    = 0
+	ALT_INVALIDA        = -1
+
+	PRESIDENTE_STR  = "Presidente"
+	GOBERNADOR_STR  = "Gobernador"
+	INTENDENTE_STR  = "Intendente"
+	TIPO_VOTO_VACIO = " "
 )
 
 //  ############### DESHACER ------------------------------------------------------------------------------------------
-func deshacerVoto(fila TDACola.Cola[votos.Votante]) {
+func deshacerVoto(fila TDACola.Cola[votos.Votante]) (int, error) {
 	if fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
-	} else {
-		errDeshacer := fila.VerPrimero().Deshacer()
-
-		if errDeshacer != nil {
-			if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
-				fila.Desencolar()
-			}
-			fmt.Fprintf(os.Stdout, "%s\n", errDeshacer)
-		} else {
-			fmt.Fprintf(os.Stdout, "OK\n")
-		}
+		return fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
 	}
+	errDeshacer := fila.VerPrimero().Deshacer()
+
+	if errDeshacer != nil {
+		if errors.Is(errDeshacer, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
+			fila.Desencolar()
+		}
+		return fmt.Fprintf(os.Stdout, "%s\n", errDeshacer)
+	}
+	return fmt.Fprintf(os.Stdout, "OK\n")
+
 }
 
 // ############### INGRESAR DNI ---------------------------------------------------------------------------------------
@@ -56,7 +67,8 @@ func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
 	}
 }
 
-func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {s
+func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
+	//se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
 	dni, err := strconv.Atoi(data[0])
 	if err != nil || len(data) != 1 || dni <= MIN_DNI || dni >= MAX_DNI {
 		return nil, errores.DNIError{}
@@ -87,12 +99,15 @@ func candidaturaValida(candidaturas []votos.TipoVoto, tipo votos.TipoVoto) bool 
 
 func pasarStringATipoVoto(tipo string) votos.TipoVoto {
 	switch tipo {
-	case "Presidente":
+	case PRESIDENTE_STR:
 		return votos.PRESIDENTE
-	case "Gobernador":
+
+	case GOBERNADOR_STR:
 		return votos.GOBERNADOR
-	case "Intendente":
+
+	case INTENDENTE_STR:
 		return votos.INTENDENTE
+
 	default:
 		return POS_INVALIDA
 	}
@@ -113,38 +128,43 @@ func controlarAlt(alt string, partidos []votos.Partido) (int, error) {
 	alternativa, errAlt := strconv.Atoi(alt)
 	if errAlt != nil || alternativa >= len(partidos)-1 || alternativa < 0 {
 		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorAlternativaInvalida{})
-		return -1, errores.ErrorAlternativaInvalida{}
+		return ALT_INVALIDA, errores.ErrorAlternativaInvalida{}
 	}
 	return alternativa, errAlt
 }
 
-func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []votos.TipoVoto, partidos []votos.Partido) {
+func votar(fila TDACola.Cola[votos.Votante], datos []string, candidaturas []votos.TipoVoto, partidos []votos.Partido) (int, error) {
 	if fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
-	} else if len(datos) != 2 {
+		return fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
+	}
+	if len(datos) != CANT_DATOS_VOTAR {
 		//No es una condición contemplada en la consigna, pero es necesaria para el buen funcionamiento
 		//De la misma manera, si los datos no son 2, no hay forma de que el voto sea válido
-		fmt.Fprintf(os.Stdout, "%s\n%s", errores.ErrorAlternativaInvalida{}, errores.ErrorTipoVoto{})
-	} else {
-		tipo, errTipo := controlarTipo(datos[0], candidaturas)
-		alt, errAlt := controlarAlt(datos[1], partidos)
-
-		if errAlt == nil && errTipo == nil {
-			err := fila.VerPrimero().Votar(tipo, alt)
-			if errors.Is(err, errores.ErrorVotanteFraudulento{Dni: fila.VerPrimero().LeerDNI()}) {
-				fmt.Fprintf(os.Stdout, "%s\n", err)
-				fila.Desencolar()
-			} else {
-				fmt.Fprintf(os.Stdout, "OK\n")
-			}
-		}
+		return fmt.Fprintf(os.Stdout, "%s\n%s", errores.ErrorAlternativaInvalida{}, errores.ErrorTipoVoto{})
 	}
+	tipo, errTipo := controlarTipo(datos[0], candidaturas)
+	alt, errAlt := controlarAlt(datos[1], partidos)
+
+	if errAlt == nil && errTipo == nil {
+		err := fila.VerPrimero().Votar(tipo, alt)
+		if err != nil {
+			fila.Desencolar()
+			return fmt.Fprintf(os.Stdout, "%s\n", err)
+		}
+		return fmt.Fprintf(os.Stdout, "OK\n")
+	}
+
+	if errTipo != nil {
+		return int(tipo), errTipo
+	}
+	return alt, errAlt
+
 }
 
 // ############### FIN-VOTO  ------------------------------------------------------------------------------------------
 func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.TipoVoto) {
 	for i := range candidaturas {
-		if voto.VotoPorTipo[i] == 0 {
+		if voto.VotoPorTipo[i] == VOTO_EN_BLANCO {
 			partidos[len(partidos)-1].VotadoPara(candidaturas[i])
 		} else {
 			partidos[voto.VotoPorTipo[i]].VotadoPara(candidaturas[i])
@@ -154,51 +174,51 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 
 //Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
 //si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
-func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) {
+func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) (int, error) {
 	if fila.EstaVacia() {
-		fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
-	} else {
-		voto, errFinalizar := fila.VerPrimero().FinVoto()
-		if errFinalizar != nil {
-			fmt.Fprintf(os.Stdout, "%s\n", errFinalizar)
-		} else {
-			if voto.Impugnado {
-				// elegimos presidente arbitrariamente para guardar los impugnados
-				partidos[votos.PRESIDENTE].VotadoPara(votos.PRESIDENTE)
-			} else {
-				sumarVoto(voto, partidos, candidaturas)
-			}
-			fmt.Fprintf(os.Stdout, "OK\n")
-		}
-		fila.Desencolar()
+		return fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
 	}
+
+	voto, errFinalizar := fila.VerPrimero().FinVoto()
+
+	if errFinalizar != nil {
+		return fmt.Fprintf(os.Stdout, "%s\n", errFinalizar)
+	}
+	if voto.Impugnado {
+		partidos[LISTA_IMPUGNADOS].VotadoPara(votos.PRESIDENTE) // elegi presidente arbitrariamente para guardar los impugnados
+	} else {
+		sumarVoto(voto, partidos, candidaturas)
+	}
+
+	fila.Desencolar()
+	return fmt.Fprintf(os.Stdout, "OK\n")
 
 }
 
 // ############### Lectura Archivos de Inicio -------------------------------------------------------------------------
 
-func prepararLista(archivoLista string) []votos.Partido {
-	lista := make([]votos.Partido, 1, INIT_PARTIDOS)
-	archivo, err := os.Open(archivoLista)
+func prepararPartidos(archivoPartidos string) []votos.Partido {
+	arregloPartidos := make([]votos.Partido, 1, INIT_PARTIDOS)
+	archivo, err := os.Open(archivoPartidos)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
-	lista[0] = votos.CrearVotosEnBlanco("Votos Impugnados")
+	arregloPartidos[0] = votos.CrearVotosEnBlanco("Votos Impugnados")
 	s := bufio.NewScanner(archivo)
 	for s.Scan() {
 		dividirLinea := strings.Split(s.Text(), ",")
 		partido := votos.CrearPartido(dividirLinea[0], dividirLinea[1:])
-		lista = append(lista, partido)
+		arregloPartidos = append(arregloPartidos, partido)
 	}
-	lista = append(lista, votos.CrearVotosEnBlanco("Votos en Blanco"))
+	arregloPartidos = append(arregloPartidos, votos.CrearVotosEnBlanco("Votos en Blanco"))
 
 	err = s.Err()
 	if err != nil {
 		fmt.Println(err)
 	}
-	return lista
+	return arregloPartidos
 }
 
 func leerPadron(archivoPadron string) []int {
@@ -206,7 +226,7 @@ func leerPadron(archivoPadron string) []int {
 	temp := make([]int, 0, INIT_PADRON)
 	archivo, err := os.Open(archivoPadron)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "%s", errores.ErrorLeerArchivo{})
+		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorLeerArchivo{})
 	}
 	defer archivo.Close()
 
@@ -242,15 +262,14 @@ func prepararPadron(archivoPadron string) []votos.Votante {
 	//que no era recomendable leerlo más de una vez)
 	//2) Estimar el número de lineas usando la información provista por os.Stat() (file size) y que vamos a manejarnos
 	//con datos de DNI, o sea, integers en un rango especifico?
-	//Igualmente en base a los resultados del test, pareceria funcionar bien con estos volumenes de datos
 }
 
-func prepararMesa(archivoLista, archivoPadron string) ([]votos.Partido, []votos.Votante) {
+func prepararMesa(archivoPartidos, archivoPadron string) ([]votos.Partido, []votos.Votante) {
 
 	// leer archivos
 	padron := prepararPadron(archivoPadron)
-	lista := prepararLista(archivoLista)
-	return lista, padron
+	partidos := prepararPartidos(archivoPartidos)
+	return partidos, padron
 }
 
 func inicializar(args []string) bool {
@@ -258,7 +277,7 @@ func inicializar(args []string) bool {
 	// antes de inicializar el resto del programa
 
 	// parametros correctos
-	if len(args) < 2 {
+	if len(args) < ARCHIVOS_INICIO {
 		fmt.Fprintf(os.Stdout, "%s\n", errores.ErrorParametros{})
 		return false
 	}
@@ -275,20 +294,19 @@ func inicializar(args []string) bool {
 
 // Impresion de resultados -------------------------------------------------------------------------------------------
 func pasarTipoVotoAString(candidatura votos.TipoVoto) string {
-
 	switch candidatura {
 
 	case votos.PRESIDENTE:
-		return "Presidente"
+		return PRESIDENTE_STR
 
 	case votos.GOBERNADOR:
-		return "Gobernador"
+		return GOBERNADOR_STR
 
 	case votos.INTENDENTE:
-		return "Intendente"
+		return INTENDENTE_STR
 
 	}
-	return " "
+	return TIPO_VOTO_VACIO
 }
 
 func imprimirResultados(partidos []votos.Partido, candidaturas []votos.TipoVoto) {
