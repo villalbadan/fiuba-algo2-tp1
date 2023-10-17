@@ -68,9 +68,9 @@ func buscarEnPadron(padron []votos.Votante, dni int) (votos.Votante, error) {
 }
 
 func controlarDNI(padron []votos.Votante, data []string) (votos.Votante, error) {
-	//se podria controlar si len(data) > 1 pero no recuerdo si se contempla en los errores
+
 	dni, err := strconv.Atoi(data[0])
-	if err != nil || len(data) != 1 || dni <= MIN_DNI || dni >= MAX_DNI {
+	if err != nil || len(data) != CANT_DATOS_INGRESAR || dni <= MIN_DNI || dni >= MAX_DNI {
 		return nil, errores.DNIError{}
 	}
 
@@ -172,8 +172,6 @@ func sumarVoto(voto votos.Voto, partidos []votos.Partido, candidaturas []votos.T
 	}
 }
 
-//Por ahora solo funciona si no votas a las 3 candidaturas con un solo votante,
-//si lo haces con 3 te tira un index out of range. Le faltaria tener en cuenta los votos en blanco
 func finalizarVoto(fila TDACola.Cola[votos.Votante], partidos []votos.Partido, candidaturas []votos.TipoVoto) (int, error) {
 	if fila.EstaVacia() {
 		return fmt.Fprintf(os.Stdout, "%s\n", errores.FilaVacia{})
@@ -253,15 +251,6 @@ func prepararPadron(archivoPadron string) []votos.Votante {
 		padron = append(padron, votos.CrearVotante(temp[i]))
 	}
 	return padron
-
-	//Elegimos un array en vez de lista enlazada para poder realizar la busqueda de los dni con busqueda binaria.
-	//La clara desventaja es la redimension que tenga que hacer en caso de padrones muy grandes.
-	//Idealmente, sabriamos la cantidad de lineas para asi poder crear el array tan grande como sea necesario.
-	//PREGUNTA: ¿Podriamos para esto hacer algo de las siguientes opciones?
-	//1) Leer una vez el archivo para contar las lineas antes de volver a leerlo para extraer los datos? (Habian dicho
-	//que no era recomendable leerlo más de una vez)
-	//2) Estimar el número de lineas usando la información provista por os.Stat() (file size) y que vamos a manejarnos
-	//con datos de DNI, o sea, integers en un rango especifico?
 }
 
 func prepararMesa(archivoPartidos, archivoPadron string) ([]votos.Partido, []votos.Votante) {
@@ -354,11 +343,11 @@ func main() {
 		s := bufio.NewScanner(os.Stdin)
 		for s.Scan() {
 			args := strings.Split(s.Text(), " ")
-			switch args[0] {
+			switch args[COMANDO] {
 			case "ingresar":
-				ingresarDNI(fila, padron, args[1:])
+				ingresarDNI(fila, padron, args[COMANDO+1:])
 			case "votar":
-				votar(fila, args[1:], candidaturas, partidos)
+				votar(fila, args[COMANDO+1:], candidaturas, partidos)
 			case "deshacer":
 				deshacerVoto(fila)
 			case "fin-votar":
