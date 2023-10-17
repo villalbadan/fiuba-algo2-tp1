@@ -9,6 +9,11 @@ type votanteImplementacion struct {
 	DNI         int
 	yaVoto      bool
 	ordenDeVoto lista.Lista[votosIndividuales]
+	// ordenDeVoto originalmente iba a ser una pila. Sin embargo, para preservar el orden al deshacer, y por
+	// comodidad de usar el iterador nativo del TDA para recorrer los votos anteriores, en vez de apilar
+	//y al contar los votos tener que desapilar hasta que este vacia, decidimos usar la lista solo con InsertarPrimero
+	// y BorrarPrimero (funcionalmente muy similar a una pila)
+
 }
 
 type votosIndividuales struct {
